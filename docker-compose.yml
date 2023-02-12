@@ -1,0 +1,66 @@
+version: '3.8'
+
+networks:
+  jenkins:
+    driver: bridge
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: jenkins.Dockerfile
+    depends_on:
+      - dind
+    container_name: jenkins
+    restart: always
+    environment:
+      - DOCKER_TLS_VERIFY=1 # Tells the docker client to use certificates on communications
+      - DOCKER_CERT_PATH=/certs/client # Tells the docker client where are the certificates to be used in communications
+      - DOCKER_HOST=tcp://docker:2376 # Tells the docker client where to connect to the daemon, in this case the dind through the jenkins network using an alias
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - ./jenkins-data:/var/jenkins_home:rw # Preserves Jenkins data like job definitions, credentials, build logs, etc.
+      - ./jenkins-docker-certs:/certs/client:ro # Docker client certs.
+    networks:
+      - jenkins # Use jenkins network defined earlier
+
+  dind:
+    image: docker:dind
+    networks:
+      jenkins:
+        aliases:
+          - docker # Defines to use jenkins network defined above also under the alias name `docker`.
+    container_name: dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    ports:
+      - "2376:2376" # Exposes docker server port 2376 to be used by jenkins or an agent at "tcp://docker:2376".
+    volumes:
+      - ./jenkins-docker-certs:/certs/client # Docker client certs folder mapped to host.
+      - ./jenkins-data:/var/jenkins_home # Maps the jenkins master workspace to the host machine file system
+      - ./jenkins-agent-workspace:/home/jenkins/agent/workspace # Maps the agent workspace to the host machine file system
+
+  agent:
+    build: 
+      context: .
+      dockerfile: agent.Dockerfile
+    depends_on:
+      - dind
+    privileged: true
+    user: root
+    container_name: agent
+    expose:
+      - 22
+    environment:
+      - DOCKER_TLS_VERIFY=1 # Tells the docker client to use certificates on communications
+      - DOCKER_CERT_PATH=/certs/client # Tells the docker client where are the certificates to be used in communications
+      - DOCKER_HOST=tcp://docker:2376 # Tells the docker client where to connect to the daemon, in this case the dind through the jenkins network using an alias
+      - JENKINS_AGENT_SSH_PUBKEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDsUKkrsDQAJgxVhnFX2hMiSWpKnSAB1zE4n//aI5xGGu6XZroVLKUF9ywS2e23lLRPkRPCu0cGB9F7RlwETpNFsjM/M0MBajY8mJ566e4CHnEQPDVocUaklK7o5wKmUmNRjG/oZUb9iB28UPTGp5tSzjwBk+xy6acFNmvPkPuNPvEH20OEPH/N2JZSLLcVpIcrxu71pnKYTz1ByQts9QJVzfQA01HUQrC87Cirqsx9eJx7Fs6oEXZZlPt0iVvb/8Zi3XKJubh64Qp9+BA8ZMMwytzjeK7fWHPnOSTxVQqOMgnjlkejp3cM3mVpOUHAnd7H+bjcEXCRm6hGJM2ipuAz2fCXr9BbejUm4aSsT9taUdZR2oH3pYhIL1dSmbmJB4Vcv7iJANfzz37BK8VV9dCBA9E3/ni6iFAjS+7bfQD/Sh1yFMHQeg0/xrCojfI4FljGquHnH1iiYEiN12gg8Q0+UwKD5tki2CHekXbpPDQWFzQaRPuu5mS83vMZ9JxPt/s= ctw02594@CTW0259dminsMBP.lan
+    volumes:
+      - ./jenkins-docker-certs:/certs/client:ro # Gives read only access to docker-in-docker certs.
+      - ./jenkins-agent-workspace:/home/jenkins/agent/workspace # Maps the agent workspace to the host machine file system
+    networks:
+      - jenkins
