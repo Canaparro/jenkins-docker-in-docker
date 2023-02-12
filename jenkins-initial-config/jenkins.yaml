@@ -1,0 +1,26 @@
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: jenkins-agent
+              username: jenkins
+              description: "SSH private key to jenkins agent"
+              privateKeySource:
+                directEntry:
+                  privateKey: ${readFile:/var/jenkins_home/casc_configs/jenkins-agent-private-key}
+jenkins:
+  nodes:
+  - permanent:
+      labelString: "docker"
+      launcher:
+        ssh:
+          credentialsId: "jenkins-agent"
+          host: "agent"
+          port: 22
+          sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+      name: "docker-agent"
+      remoteFS: "/home/jenkins/agent"
+      retentionStrategy: "always"
+  numExecutors: 0

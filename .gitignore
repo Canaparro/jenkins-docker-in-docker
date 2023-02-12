@@ -1,2 +1,5 @@
 jenkins-data/
 jenkins-docker-certs/
+
+# jenkins agent private key
+jenkins-initial-config/jenkins-agent-private-key
