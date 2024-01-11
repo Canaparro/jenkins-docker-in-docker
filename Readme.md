@@ -1,7 +1,7 @@
 # Jenkins with agent using docker-in-docker
 
 In this repository you will find the required files to deploy a jenkins master along with an agent supporting docker builds by using  docker-in-docker.
-This is useful in a scenario where you want to have an easy to deploy CI/CD but with limited resources.
+This is useful in a scenario where you want to have an easy to deploy CI/CD but with limited resources, such as a single machine.
 
 # Dockerfiles
 
